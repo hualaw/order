@@ -3,7 +3,7 @@ package com.interview.order.entity;
 public enum OrderStatus {
     CREATED(1),
     COMPLETED(2),
-    CANCELED(3);
+    CANCELLED(3);
 
     private final int code;
 

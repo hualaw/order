@@ -73,7 +73,7 @@ public class OrderServiceImpl implements OrderService {
             return UpdateResult.NOT_ALLOWED;
         }
 
-        if (target == OrderStatus.COMPLETED || target == OrderStatus.CANCELED) {
+        if (target == OrderStatus.COMPLETED || target == OrderStatus.CANCELLED) {
             int oldCode = current == null ? 0 : current.getCode();
             order.setStatus(target);
             order.setUpdateTime(LocalDateTime.now());
