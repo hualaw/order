@@ -12,6 +12,7 @@ import com.interview.order.entity.OrderStatus;
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
+    //fuzzy match for productName, exact match for customer and status, createTime between startTime and endTime
     @Query("SELECT o FROM Order o WHERE " +
             "(:productName IS NULL OR LOWER(o.productName) LIKE LOWER(CONCAT('%',:productName,'%'))) AND " +
             "(:customer IS NULL OR o.customer = :customer) AND " +

@@ -62,11 +62,13 @@ public class OrderServiceImpl implements OrderService {
 
         Order order = o.get();
         OrderStatus current = order.getStatus();
+        //only allow CREATED -> COMPLETED/CANCELLED
         if (current == null || current != OrderStatus.CREATED) {
             return UpdateResult.NOT_ALLOWED;
         }
 
         OrderStatus target;
+        //unknown status code return not allowed
         try {
             target = OrderStatus.fromCode(statusCode);
         } catch (IllegalArgumentException ex) {
