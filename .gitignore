@@ -2,3 +2,4 @@ HELP.md
 target
 .idea
 *.iml
+.DS_Store

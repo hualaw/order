@@ -1,4 +1,4 @@
-# An simple order system
+# A simple order system
 
 ## System Purpose
 The order management system is a Spring Boot-based REST API that provides secure order lifecycle management with integrated notification capabilities. The system enables authenticated clients to create orders, track their status through defined states, and receive notifications when order events occur. The architecture emphasizes security, extensibility, and maintainability through clean separation of concerns and event-driven design.
@@ -42,6 +42,32 @@ The system is built on the following technologies and frameworks:
 ### Validation and Utilities
 * <strong>Jakarta Validation (spring-boot-starter-validation)</strong>: Request validation
 * <strong>Lombok</strong>: Boilerplate reduction for Java classes
+
+## Why Decision Made
+### Why use Spring Event to implement notification system?
+* It's too heavy to introduce a full-fledged message broker like RabbitMQ or Kafka for this simple order system.
+* Spring Events allow for easy integration with existing Spring components and leverage the existing application context, making
+ it simpler to manage and maintain the notification system without adding external dependencies.
+
+### Why use JWT for authentication?
+* JWTs are stateless and self-contained, allowing for scalable authentication without the need for server-side session storage.
+* They can be easily integrated into RESTful APIs, providing a secure way to transmit user information between the client and server.
+* JWTs support claims, enabling the inclusion of additional user information and permissions within the token itself.
+
+### Why use MySQL as the database?
+* MySQL is a widely-used, reliable, and well-supported relational database that fits the needs
+  of this order management system, providing robust data integrity and transactional support.
+* It can provide data filtering and pagination capabilities at the database level, reducing the need for complex data processing in the application layer.
+
+### Why use State Machine to manage order states?
+* State machines provide a clear and structured way to manage complex state transitions, ensuring that orders can only move between valid states.
+* They enhance code readability and maintainability by encapsulating state logic, making it easier to understand and modify the order lifecycle.
+* State machines facilitate debugging and testing by providing a well-defined framework for handling state changes and transitions.
+
+
+
+
+
 
 
 

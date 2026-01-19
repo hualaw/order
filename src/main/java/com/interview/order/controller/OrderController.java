@@ -88,7 +88,7 @@ public class OrderController {
     @GetMapping("/search")
     public ResponseEntity<ApiRestResponse<Map<String, Object>>> searchOrders(
             @RequestParam(value = "productName", required = false) String productName,
-            @RequestParam(value = "customer", required = false) String customer,
+            @RequestParam(value = "customer", required = true) String customer,
             @RequestParam(value = "status", required = false) Integer statusCode,
             @RequestParam(value = "starttime", required = false) String startTimeStr,
             @RequestParam(value = "endtime", required = false) String endTimeStr,
