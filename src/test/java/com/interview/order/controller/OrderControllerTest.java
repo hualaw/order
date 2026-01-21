@@ -36,7 +36,7 @@ class OrderControllerTest {
     @Mock
     private OrderService orderService;
 
-    private ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private Order sampleOrder;
 

@@ -2,8 +2,10 @@ package com.interview.order.web;
 
 public class ApiRestResponse<T> {
 
+    //business status code
     private Integer code;
 
+    //business status message
     private String msg;
 
     private T data;

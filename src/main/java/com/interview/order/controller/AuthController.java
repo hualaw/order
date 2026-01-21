@@ -12,9 +12,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
+
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
 
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
@@ -26,15 +31,20 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> body) {
+        String username = body == null ? null : body.get("username");
         try {
-            String username = body.get("username");
-            String password = body.get("password");
+            String password = body == null ? null : body.get("password");
             authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
             String token = jwtUtil.generateToken(username);
+            logger.info("login: user '{}' authenticated successfully", username);
             return ResponseEntity.ok(Map.of("token", token));
         } catch (AuthenticationException ex) {
+            logger.error("login: authentication failed for user '{}': {}", username, ex.toString(), ex);
             return ResponseEntity.status(401).body(Map.of("error", "invalid_credentials"));
+        } catch (Exception ex) {
+            // catch any unexpected error and log it
+            logger.error("login: unexpected error for user '{}': {}", username, ex.toString(), ex);
+            return ResponseEntity.status(500).body(Map.of("error", "internal_error"));
         }
     }
 }
-
