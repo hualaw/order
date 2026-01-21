@@ -133,6 +133,7 @@ public class OrderController {
                 m.put("totalAmount", order.getTotalAmount());
                 m.put("customer", order.getCustomer());
                 m.put("currency", order.getCurrency());
+                m.put("status", order.getStatus() == null ? null : order.getStatus().getCode());
                 m.put("createtime", order.getCreateTime() == null ? null : order.getCreateTime().format(dtf));
                 m.put("updatetime", order.getUpdateTime() == null ? null : order.getUpdateTime().format(dtf));
                 return m;
