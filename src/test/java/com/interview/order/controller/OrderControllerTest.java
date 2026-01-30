@@ -66,10 +66,10 @@ class OrderControllerTest {
 
         when(orderService.createOrder(any(CreateOrderRequest.class))).thenReturn(sampleOrder);
 
-        mockMvc.perform(post("/order/create")
+        mockMvc.perform(post("/orders")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.code").value(ApiRestResponse.OK_CODE))
                 .andExpect(jsonPath("$.data.id").value(10));
 
@@ -80,7 +80,7 @@ class OrderControllerTest {
     void retrieveOrder_found() throws Exception {
         when(orderService.getOrder(10L)).thenReturn(Optional.of(sampleOrder));
 
-        mockMvc.perform(get("/order/retrieve").param("id", "10"))
+        mockMvc.perform(get("/orders/10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(ApiRestResponse.OK_CODE))
                 .andExpect(jsonPath("$.data.productName").value("Gadget"));
@@ -90,7 +90,7 @@ class OrderControllerTest {
     void retrieveOrder_notFound() throws Exception {
         when(orderService.getOrder(99L)).thenReturn(Optional.empty());
 
-        mockMvc.perform(get("/order/retrieve").param("id", "99"))
+        mockMvc.perform(get("/orders/99"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value(ApiRestResponse.NOT_FOUND_CODE));
     }
@@ -99,7 +99,9 @@ class OrderControllerTest {
     void updateOrder_success() throws Exception {
         when(orderService.updateOrderStatus(10L, OrderStatus.COMPLETED.getCode())).thenReturn(OrderService.UpdateResult.SUCCESS);
 
-        mockMvc.perform(patch("/order/update").param("id", "10").param("status", String.valueOf(OrderStatus.COMPLETED.getCode())))
+        mockMvc.perform(patch("/orders/10/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\": " + OrderStatus.COMPLETED.getCode() + "}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(ApiRestResponse.OK_CODE));
     }
@@ -108,7 +110,9 @@ class OrderControllerTest {
     void updateOrder_notFound() throws Exception {
         when(orderService.updateOrderStatus(99L, OrderStatus.COMPLETED.getCode())).thenReturn(OrderService.UpdateResult.NOT_FOUND);
 
-        mockMvc.perform(patch("/order/update").param("id", "99").param("status", String.valueOf(OrderStatus.COMPLETED.getCode())))
+        mockMvc.perform(patch("/orders/99/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\": " + OrderStatus.COMPLETED.getCode() + "}"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value(ApiRestResponse.NOT_FOUND_CODE));
     }
@@ -118,7 +122,7 @@ class OrderControllerTest {
         Page<Order> page = new PageImpl<>(List.of(sampleOrder), PageRequest.of(0, 10), 1);
         when(orderService.search(nullable(String.class), eq("Bob"), any(), any(), any(), anyInt(), anyInt())).thenReturn(page);
 
-        mockMvc.perform(get("/order/search").param("start", "0").param("count", "10").param("customer", "Bob"))
+        mockMvc.perform(get("/orders").param("start", "0").param("count", "10").param("customer", "Bob"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(ApiRestResponse.OK_CODE))
                 .andExpect(jsonPath("$.data.total").value(1))
@@ -135,7 +139,7 @@ class OrderControllerTest {
         when(orderService.search(anyString(), anyString(), any(), any(), any(), anyInt(), anyInt())).thenReturn(page);
 
         try {
-            var resp = controller.searchOrders(null, "Bob", null, null, null, 0, 10);
+            var resp = controller.searchOrders(null, "Bob", null, null, null, 0, 10, null, null);
             System.out.println("[DIRECT] status=" + resp.getStatusCode().value() + " body=" + resp.getBody());
         } catch (Exception ex) {
             System.out.println("[DIRECT] exception: " + ex);

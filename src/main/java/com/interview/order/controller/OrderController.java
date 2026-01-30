@@ -4,6 +4,7 @@ import com.interview.order.entity.Order;
 import com.interview.order.service.OrderService;
 import com.interview.order.web.ApiRestResponse;
 import com.interview.order.web.CreateOrderRequest;
+import com.interview.order.web.UpdateStatusRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,6 +12,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -24,7 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @RestController
-@RequestMapping("/order")
+@RequestMapping("/orders")
 @Validated
 public class OrderController {
 
@@ -38,21 +40,21 @@ public class OrderController {
         this.orderService = orderService;
     }
 
-    @PostMapping("/create")
-    public ResponseEntity<ApiRestResponse<Map<String, Long>>> createOrder(@RequestBody CreateOrderRequest req) {
+    @PostMapping
+    public ResponseEntity<ApiRestResponse<Map<String, Long>>> createOrder(@Valid @RequestBody CreateOrderRequest req) {
         try {
             Order saved = orderService.createOrder(req);
             Map<String, Long> data = Map.of("id", saved.getId());
             logger.info("createOrder: created order id={} product={} customer={}", saved.getId(), saved.getProductName(), saved.getCustomer());
-            return ResponseEntity.ok(ApiRestResponse.success(data));
+            return ResponseEntity.status(HttpStatus.CREATED).body(ApiRestResponse.success(data));
         } catch (Exception e) {
             logger.error("createOrder: failed to create order for product={} customer={}.", req == null ? null : req.getProductName(), req == null ? null : req.getCustomer(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ApiRestResponse.error());
         }
     }
 
-    @GetMapping("/retrieve")
-    public ResponseEntity<ApiRestResponse<Map<String, Object>>> retrieveOrder(@RequestParam("id") Long id) {
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiRestResponse<Map<String, Object>>> retrieveOrder(@PathVariable("id") Long id) {
         try {
             Optional<Order> o = orderService.getOrder(id);
             if (o.isEmpty()) {
@@ -79,9 +81,24 @@ public class OrderController {
         }
     }
 
-    @PatchMapping("/update")
-    public ResponseEntity<ApiRestResponse<Object>> updateOrderStatus(@RequestParam("id") Long id,
-                                                                      @RequestParam("status") @NotNull @Min(1) @Max(3) Integer statusCode) {
+    // New endpoint: PATCH /orders/{id}/status with JSON body (preferred). Keep legacy PATCH /orders/{id}?status=.. as fallback.
+    @PatchMapping(path = "/{id}/status")
+    public ResponseEntity<ApiRestResponse<Object>> updateOrderStatusWithBody(@PathVariable("id") Long id,
+                                                                              @Valid @RequestBody UpdateStatusRequest req) {
+        return updateOrderStatusInternal(id, req.getStatus());
+    }
+
+    @PatchMapping(path = "/{id}")
+    public ResponseEntity<ApiRestResponse<Object>> updateOrderStatus(@PathVariable("id") Long id,
+                                                                      @RequestParam(value = "status", required = false) @Min(1) @Max(3) Integer statusCode) {
+        if (statusCode == null) {
+            logger.warn("updateOrderStatus: missing status parameter for id={}", id);
+            return ResponseEntity.badRequest().body(ApiRestResponse.error());
+        }
+        return updateOrderStatusInternal(id, statusCode);
+    }
+
+    private ResponseEntity<ApiRestResponse<Object>> updateOrderStatusInternal(Long id, Integer statusCode) {
         try {
             OrderService.UpdateResult res = orderService.updateOrderStatus(id, statusCode);
             switch (res) {
@@ -104,19 +121,35 @@ public class OrderController {
         }
     }
 
-    @GetMapping("/search")
+    @GetMapping
     public ResponseEntity<ApiRestResponse<Map<String, Object>>> searchOrders(
             @RequestParam(value = "productName", required = false) String productName,
+            // prefer 'customer' to be required by business, keep as required here
             @RequestParam(value = "customer", required = true) String customer,
             @RequestParam(value = "status", required = false) Integer statusCode,
             @RequestParam(value = "starttime", required = false) String startTimeStr,
             @RequestParam(value = "endtime", required = false) String endTimeStr,
-            @RequestParam(value = "start", defaultValue = "0") Integer start,
-            @RequestParam(value = "count", defaultValue = "10") Integer count
+            // support new pagination params page & size, but accept legacy start/count
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "size", required = false) Integer size,
+            @RequestParam(value = "start", required = false) Integer start,
+            @RequestParam(value = "count", required = false) Integer count
     ) {
         try {
-            if (start < 0 || count <= 0) {
-                logger.warn("searchOrders: invalid paging parameters start={} count={}", start, count);
+            int resolvedPage = 0;
+            int resolvedSize = 10;
+
+            if (page != null && page >= 0) resolvedPage = page;
+            if (size != null && size > 0) resolvedSize = size;
+
+            // legacy fallback: if start/count provided use them
+            if ((page == null || size == null) && start != null && count != null && count > 0 && start >= 0) {
+                resolvedPage = start / count;
+                resolvedSize = count;
+            }
+
+            if (resolvedPage < 0 || resolvedSize <= 0) {
+                logger.warn("searchOrders: invalid paging parameters page={} size={} start={} count={}", resolvedPage, resolvedSize, start, count);
                 return ResponseEntity.badRequest().body(ApiRestResponse.error());
             }
 
@@ -125,7 +158,8 @@ public class OrderController {
             if (startTimeStr != null && !startTimeStr.isBlank()) startTime = LocalDateTime.parse(startTimeStr, dtf);
             if (endTimeStr != null && !endTimeStr.isBlank()) endTime = LocalDateTime.parse(endTimeStr, dtf);
 
-            Page<Order> pageResult = orderService.search(productName, customer, statusCode, startTime, endTime, start, count);
+            int offset = resolvedPage * resolvedSize;
+            Page<Order> pageResult = orderService.search(productName, customer, statusCode, startTime, endTime, offset, resolvedSize);
 
             List<Map<String, Object>> orders = pageResult.getContent().stream().map(order -> {
                 Map<String, Object> m = new LinkedHashMap<>();
@@ -142,6 +176,8 @@ public class OrderController {
             Map<String, Object> data = new LinkedHashMap<>();
             data.put("orders", orders);
             data.put("total", pageResult.getTotalElements());
+            data.put("page", resolvedPage);
+            data.put("size", resolvedSize);
 
             logger.info("searchOrders: returned {} orders for productName={} customer={} status={}", orders.size(), productName, customer, statusCode);
             return ResponseEntity.ok(ApiRestResponse.success(data));
@@ -154,7 +190,8 @@ public class OrderController {
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ApiRestResponse<Object>> handleValidationException(ConstraintViolationException ex) {
         logger.warn("handleValidationException: validation failure - {}", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+        // validation issues should be treated as bad request (400)
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiRestResponse.error(ApiRestResponse.NOT_ALLOWED_CODE, ApiRestResponse.NOT_ALLOWED_MSG));
     }
 }

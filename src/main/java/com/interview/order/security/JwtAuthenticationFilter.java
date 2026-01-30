@@ -14,8 +14,13 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     private final JwtUtil jwtUtil;
     private final UserDetailsService userDetailsService;
@@ -36,20 +41,48 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             try {
                 username = jwtUtil.extractUsername(jwt);
             } catch (Exception ex) {
-                // invalid token
+                logger.error("JwtAuthenticationFilter: failed to extract username from token: {}", ex.getMessage());
+                // invalid token -> reject immediately
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid JWT token");
+                return;
             }
         }
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-            if (jwtUtil.validateToken(jwt, userDetails.getUsername())) {
+            try {
+                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                if (userDetails == null) {
+                    logger.warn("JwtAuthenticationFilter: user not found for username={}", username);
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid JWT token");
+                    return;
+                }
+
+                boolean valid = false;
+                try {
+                    valid = jwtUtil.validateToken(jwt, userDetails.getUsername());
+                } catch (Exception ex) {
+                    logger.error("JwtAuthenticationFilter: token validation error: {}", ex.getMessage());
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid JWT token");
+                    return;
+                }
+
+                if (!valid) {
+                    logger.warn("JwtAuthenticationFilter: token validation failed for username={}", username);
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid JWT token");
+                    return;
+                }
+
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
+                logger.info("JwtAuthenticationFilter: authenticated user={}", username);
+            } catch (Exception ex) {
+                logger.error("JwtAuthenticationFilter: unexpected error during authentication: {}", ex.getMessage(), ex);
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid JWT token");
+                return;
             }
         }
 
         filterChain.doFilter(request, response);
     }
 }
-
