@@ -1,8 +1,9 @@
 package com.interview.order.notification;
 
 import com.interview.order.entity.Order;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.util.List;
 
@@ -19,12 +20,14 @@ public class NotificationDispatcher {
         this.smsNotification = smsNotification;
     }
 
-    @EventListener
+    // AFTER_COMMIT: only notify once the publishing transaction has committed,
+    // so a rolled-back order never triggers a notification.
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onOrderCreated(OrderCreatedEvent event) {
         dispatch(event.getOrder(), "ORDER_CREATED");
     }
 
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onOrderStatusChanged(OrderStatusChangedEvent event) {
         dispatch(event.getOrder(), "ORDER_STATUS_CHANGED");
     }
