@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.ConstraintViolationException;
@@ -187,8 +188,8 @@ public class OrderController {
         }
     }
 
-    @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<ApiRestResponse<Object>> handleValidationException(ConstraintViolationException ex) {
+    @ExceptionHandler({MethodArgumentNotValidException.class, ConstraintViolationException.class})
+    public ResponseEntity<ApiRestResponse<Object>> handleValidationException(Exception ex) {
         logger.warn("handleValidationException: validation failure - {}", ex.getMessage());
         // validation issues should be treated as bad request (400)
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)

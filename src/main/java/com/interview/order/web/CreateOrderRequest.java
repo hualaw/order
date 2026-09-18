@@ -3,12 +3,19 @@ package com.interview.order.web;
 import java.math.BigDecimal;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 
 public class CreateOrderRequest {
+    @NotBlank
     private String productName; // product name
 
+    @NotBlank
     private String customer;
 
+    @NotNull
+    @Positive
     private BigDecimal totalAmount;
 
     @JsonProperty(required = false)

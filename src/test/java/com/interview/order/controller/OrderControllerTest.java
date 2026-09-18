@@ -77,6 +77,91 @@ class OrderControllerTest {
     }
 
     @Test
+    void createOrder_blankProductName_rejected() throws Exception {
+        CreateOrderRequest req = new CreateOrderRequest();
+        req.setProductName("  ");
+        req.setCustomer("Bob");
+        req.setTotalAmount(new BigDecimal("99.99"));
+
+        mockMvc.perform(post("/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(ApiRestResponse.NOT_ALLOWED_CODE))
+                .andExpect(jsonPath("$.msg").value(ApiRestResponse.NOT_ALLOWED_MSG));
+
+        verify(orderService, never()).createOrder(any());
+    }
+
+    @Test
+    void createOrder_blankCustomer_rejected() throws Exception {
+        CreateOrderRequest req = new CreateOrderRequest();
+        req.setProductName("Gadget");
+        req.setCustomer("");
+        req.setTotalAmount(new BigDecimal("99.99"));
+
+        mockMvc.perform(post("/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(ApiRestResponse.NOT_ALLOWED_CODE))
+                .andExpect(jsonPath("$.msg").value(ApiRestResponse.NOT_ALLOWED_MSG));
+
+        verify(orderService, never()).createOrder(any());
+    }
+
+    @Test
+    void createOrder_nullAmount_rejected() throws Exception {
+        CreateOrderRequest req = new CreateOrderRequest();
+        req.setProductName("Gadget");
+        req.setCustomer("Bob");
+        req.setTotalAmount(null);
+
+        mockMvc.perform(post("/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(ApiRestResponse.NOT_ALLOWED_CODE))
+                .andExpect(jsonPath("$.msg").value(ApiRestResponse.NOT_ALLOWED_MSG));
+
+        verify(orderService, never()).createOrder(any());
+    }
+
+    @Test
+    void createOrder_zeroAmount_rejected() throws Exception {
+        CreateOrderRequest req = new CreateOrderRequest();
+        req.setProductName("Gadget");
+        req.setCustomer("Bob");
+        req.setTotalAmount(BigDecimal.ZERO);
+
+        mockMvc.perform(post("/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(ApiRestResponse.NOT_ALLOWED_CODE))
+                .andExpect(jsonPath("$.msg").value(ApiRestResponse.NOT_ALLOWED_MSG));
+
+        verify(orderService, never()).createOrder(any());
+    }
+
+    @Test
+    void createOrder_negativeAmount_rejected() throws Exception {
+        CreateOrderRequest req = new CreateOrderRequest();
+        req.setProductName("Gadget");
+        req.setCustomer("Bob");
+        req.setTotalAmount(new BigDecimal("-1.00"));
+
+        mockMvc.perform(post("/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(ApiRestResponse.NOT_ALLOWED_CODE))
+                .andExpect(jsonPath("$.msg").value(ApiRestResponse.NOT_ALLOWED_MSG));
+
+        verify(orderService, never()).createOrder(any());
+    }
+
+    @Test
     void retrieveOrder_found() throws Exception {
         when(orderService.getOrder(10L)).thenReturn(Optional.of(sampleOrder));
 
